@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<title>D3: Temperature chart</title>
+	<script src="./external/d3.min.js" charset="utf-8"></script>
+	<script src="./external/jquery-2.2.0.min.js"></script>
+	<script src="./external/jquery-ui.min.js"></script>
+	<link rel="stylesheet" href="./external/bootstrap.min.css">
+	<link rel="stylesheet" href="./external/jquery-ui.css">
+	<script src="./external/bootstrap.min.js"></script>
+	<script src="heathrow-weatherstation.js"></script>
+
+	<style type="text/css">
+	.line {
+ 	 fill: none;
+  	stroke: steelblue;
+  	stroke-width: 2px;
+	}
+/*	div {
+		position: relative;
+		float: left;
+	}*/
+	.fixed-center
+{
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: auto;
+    height: auto;
+    -webkit-transform: translate(-50%,-50%);
+    -moz-transform: translate(-50%,-50%);
+    -ms-transform: translate(-50%,-50%);
+    -o-transform: translate(-50%,-50%);
+    transform: translate(-50%,-50%);
+}
+
+	</style>
+<script type="text/javascript">
+function load_graph(from,to,option){
+	
+	var data;
+	// d3.json("heathrow-weatherstation.json",function(error,json){
+	// 	if (error) return console.warn(error);
+	// 	console.log(json[0]);
+
+		data = json;
+
+		data = data.filter(function(d){
+        
+        if(from){
+        	var year = +from.split(',')[0];
+        	var month = +from.split(',')[1];
+        	console.log("---");
+        	if(+d.yyyy<year){
+        		return false;
+        	}else if (+d.yyyy==year){
+        		if(+d.month<month){
+        			return false;
+        		}
+        	}
+
+        }
+        if(to){
+        	var year = +to.split(',')[0];
+       		var month = +to.split(',')[1];
+        	if(+d.yyyy>year){
+        		return false;
+        	}else if (+d.yyyy==year){
+        		if(+d.month>month){
+        			return false;
+        		}
+        	}
+        }
+
+
+        return true;
+    });
+		console.log(data);
+		//console.log(data[0])
+		data.forEach(function(item){
+			item.date = new Date(item.yyyy,item.month-1);
+			item.tmax_C = +item.tmax_C;
+			item.air_frost=+item.air_frost;
+        	item.rain_mm=+item.rain_mm;
+        	item.sunshine_hours=+item.sunshine_hours;
+        	item.tmin_C=+item.tmin_C;
+			// console.log(item.yyyy);
+			// console.log(item.month);
+			// console.log(item.date);
+		});
+		// data.forEach(function(item){item.division = (item.Group_name !== 'undefined' ? item.Group_name.split('-')[0] : null); item.type = (item.Group_name !== 'undefined' ? item.Group_name.split('-')[1] : null)});
+
+		// visualize();
+	//});
+	var margin = {top: 20, right: 20, bottom: 30, left: 50},
+    width = 560 - margin.left - margin.right,
+    height = 300 - margin.top - margin.bottom;
+
+	var svg = d3.select("#graph").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform",
+          "translate(" + margin.left + "," + margin.top + ")");
+
+    var x_item = 'date';
+    if(option===undefined){
+    	var y_item = 'sunshine_hours';
+    }else{
+    	var y_item = option;
+    }
+    // set the ranges
+	//var x = d3.scaleTime().range([0, width]);
+	if(from===undefined || to===undefined){
+		var x = d3.time.scale().domain(d3.extent(data,function(d){ return d[x_item]})).clamp(true).rangeRound([0, width])
+	}else{
+		var x = d3.time.scale().domain([new Date(from.split(',')[0],(+from.split(',')[1])-1),new Date(to.split(',')[0],(+to.split(',')[1])-1)]).clamp(true).rangeRound([0, width])
+	}
+
+	var y = d3.scale.linear().domain(d3.extent(data,function(d){return d[y_item]})).clamp(true).range([height, 0]);
+	// define the line
+	var valueline = d3.svg.line()
+    .x(function(d) { return x(d[x_item]); })
+    .y(function(d) { return y(d[y_item]); });
+
+    // Add the valueline path.
+  svg.append("path")
+      .data([data])
+      .attr("class", "line")
+      .attr("d", valueline);
+
+  // Add the X Axis
+  svg.append("g")
+      .attr("transform", "translate(0," + height + ")")
+      .call(d3.svg.axis().scale(x).ticks(5).orient("bottom"));
+
+  // Add the Y Axis
+  svg.append("g")
+      .call(d3.svg.axis().scale(y).orient("left"));
+
+  svg.append("text")
+    .attr("class", "x label")
+    .attr("text-anchor", "end")
+    .attr("x", width)
+    .attr("y", height - 6)
+    .text(x_item);
+
+
+svg.append("text")
+    .attr("class", "y label")
+    .attr("text-anchor", "end")
+    .attr("y", 6)
+    .attr("dy", ".75em")
+    .attr("transform", "rotate(-90)")
+    .text(y_item);
+  }
+</script>
+</head>
+
+<body>
+<div class="container">
+<div class="row fixed-center"> 
+<div class="random">
+	<div class="col-md-9" id=graph></div>
+	<div class="col-md-3">
+		<span>Year</span>
+		<form method="post" action="">
+		  <div class="form-group">
+		    <label for="from">From</label>
+		    <input type="text" class="form-control" id="from" name="from">
+		  </div>
+		  <div class="form-group">
+		    <label for="to">To</label>
+		    <input type="text" class="form-control" id="to" name="to">
+		  </div>
+		  <div class="radio">
+		  <label><input type="radio" name="optradio" value="tmax_C">temp max C</label>
+		</div>
+		<div class="radio">
+		  <label><input type="radio" name="optradio" value="tmin_C">temp min C</label>
+		</div>
+		<div class="radio">
+		  <label><input type="radio" name="optradio" value="rain_mm">rain mm</label>
+		</div>
+		<div class="radio">
+		  <label><input type="radio" name="optradio" value="sunshine_hours">sunshine hours</label>
+		</div>
+		  <button type="submit" class="btn btn-default">Display</button>
+		</form>
+	</div>
+</div>
+</div>
+</div>	 
+<script type="text/javascript">
+$(function() { 
+	load_graph();
+    $('form').on('submit', function(e) { 
+        e.preventDefault();  
+        var from,to,option;
+        var inputs = $("form :input").serializeArray();
+        for(var i=0;i<inputs.length;i++){
+        	var name = inputs[i].name;
+        	var value = inputs[i].value;
+
+        	if(name=='from'){
+        		from=value;
+        	}else if(name=='to'){
+        		to = value;
+        	}else if (name=='optradio'){
+        		option = value;
+        	}
+
+        }
+
+        console.log(from);
+        console.log(to);
+        console.log(option);
+        //clear existing graph
+        $("#graph").empty();
+        load_graph(from,to,option)
+        //console.log(inputs[name=from]) ;
+    });
+
+
+});
+</script>
+
+</body>
+</html>
